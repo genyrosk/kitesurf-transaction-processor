@@ -28,16 +28,23 @@ pub enum TxType {
 #[derive(Debug, PartialEq)]
 pub struct TxState {
     pub amount: f32,
+    pub type_: TxStateType,
     pub client_id: u16,
     pub disputed: bool,
-    // pub resolved: bool,
     pub charged_back: bool,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum TxStateType {
+    Deposit,
+    Withdrawal,
+}
+
 impl TxState {
-    fn new(amount: f32, client_id: u16) -> Self {
+    fn new(amount: f32, type_: TxStateType, client_id: u16) -> Self {
         Self {
             amount,
+            type_,
             client_id,
             disputed: false,
             charged_back: false,
@@ -97,25 +104,25 @@ pub fn process_tx(
             TxType::Deposit => {}
             TxType::Withdrawal => {}
             TxType::Dispute => {
-                if tx_state.disputed == false {
+                if tx_state.disputed == false && tx_state.type_ == TxStateType::Deposit {
                     tx_state.disputed = true;
                     tx_state.charged_back = false;
-                    let amount = tx_state.amount.abs();
+                    let amount = tx_state.amount;
                     account.available -= amount;
                     account.held += amount;
                 }
             }
             TxType::Resolve => {
-                if tx_state.disputed == true {
+                if tx_state.disputed == true && tx_state.type_ == TxStateType::Deposit {
                     tx_state.disputed = false;
                     tx_state.charged_back = false;
-                    let amount = tx_state.amount.abs();
+                    let amount = tx_state.amount;
                     account.available += amount;
                     account.held -= amount;
                 };
             }
             TxType::Chargeback => {
-                if tx_state.disputed == true {
+                if tx_state.disputed == true && tx_state.type_ == TxStateType::Deposit {
                     tx_state.disputed = false;
                     tx_state.charged_back = true;
                     let amount = tx_state.amount;
@@ -130,7 +137,10 @@ pub fn process_tx(
                 let amount = tx
                     .amount
                     .ok_or(Error::new("Deposit transaction expected to have an amount"))?;
-                tx_states.insert(tx_id, TxState::new(amount, tx.client_id));
+                tx_states.insert(
+                    tx_id,
+                    TxState::new(amount, TxStateType::Deposit, tx.client_id),
+                );
                 account.total += amount.abs();
                 account.available += amount.abs();
             }
@@ -139,7 +149,10 @@ pub fn process_tx(
                     "Withdrawal transaction expected to have an amount",
                 ))?;
                 if amount < account.available {
-                    tx_states.insert(tx_id, TxState::new(-amount, tx.client_id));
+                    tx_states.insert(
+                        tx_id,
+                        TxState::new(-amount, TxStateType::Withdrawal, tx.client_id),
+                    );
                     account.total -= amount;
                     account.available -= amount;
                 }
@@ -371,6 +384,87 @@ mod test {
                 locked: false,
             }
         );
+        Ok(())
+    }
+
+    #[test]
+    fn dispute_withdrawal_is_ignored() -> Result<(), Error> {
+        let mut accounts: HashMap<u16, ClientAccount> = HashMap::new();
+        let mut tx_states: HashMap<u32, TxState> = HashMap::new();
+        let txs = vec![
+            Tx {
+                type_: TxType::Deposit,
+                client_id: 1,
+                tx_id: 1,
+                amount: Some(10.0),
+            },
+            Tx {
+                type_: TxType::Withdrawal,
+                client_id: 1,
+                tx_id: 2,
+                amount: Some(5.0),
+            },
+            Tx {
+                type_: TxType::Dispute,
+                client_id: 1,
+                tx_id: 2,
+                amount: None,
+            },
+        ];
+        for tx in txs {
+            process_tx(tx, &mut accounts, &mut tx_states)?;
+        }
+
+        let account = accounts.get(&1).unwrap();
+        assert_eq!(
+            *account,
+            ClientAccount {
+                client: 1,
+                available: 5.0,
+                held: 0.0,
+                total: 5.0,
+                locked: false,
+            }
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn deposit_without_amount_throws_error() -> Result<(), Error> {
+        let mut accounts: HashMap<u16, ClientAccount> = HashMap::new();
+        let mut tx_states: HashMap<u32, TxState> = HashMap::new();
+        let tx = Tx {
+            type_: TxType::Deposit,
+            client_id: 1,
+            tx_id: 1,
+            amount: None,
+        };
+        let result = process_tx(tx, &mut accounts, &mut tx_states);
+
+        assert_eq!(result.is_err(), true);
+        Ok(())
+    }
+
+    #[test]
+    fn withdrawal_without_amount_throws_error() -> Result<(), Error> {
+        let mut accounts: HashMap<u16, ClientAccount> = HashMap::new();
+        let mut tx_states: HashMap<u32, TxState> = HashMap::new();
+        let tx = Tx {
+            type_: TxType::Deposit,
+            client_id: 1,
+            tx_id: 1,
+            amount: Some(10.0),
+        };
+        process_tx(tx, &mut accounts, &mut tx_states)?;
+        let tx = Tx {
+            type_: TxType::Withdrawal,
+            client_id: 1,
+            tx_id: 2,
+            amount: None,
+        };
+        let result = process_tx(tx, &mut accounts, &mut tx_states);
+
+        assert_eq!(result.is_err(), true);
         Ok(())
     }
 

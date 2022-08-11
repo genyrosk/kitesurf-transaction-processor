@@ -24,7 +24,7 @@ fn main() -> Result<(), Error> {
 
     // Process transactions
     for tx in txs.clone() {
-        process_tx(tx, &mut accounts, &mut tx_states)?;
+        let _result = process_tx(tx, &mut accounts, &mut tx_states);
     }
 
     // Output to Stdout
