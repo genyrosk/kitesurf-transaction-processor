@@ -5,7 +5,7 @@ mod error;
 mod io;
 mod transaction;
 
-pub use crate::error::*;
+pub use crate::error::Error;
 pub use crate::io::*;
 pub use crate::transaction::*;
 
