@@ -148,7 +148,7 @@ pub fn process_tx(
                 let amount = tx.amount.ok_or(Error::new(
                     "Withdrawal transaction expected to have an amount",
                 ))?;
-                if amount < account.available {
+                if amount <= account.available {
                     tx_states.insert(
                         tx_id,
                         TxState::new(-amount, TxStateType::Withdrawal, tx.client_id),
@@ -332,6 +332,12 @@ mod test {
                 tx_id: 2,
                 amount: Some(7.0),
             },
+            Tx {
+                type_: TxType::Withdrawal,
+                client_id: 1,
+                tx_id: 3,
+                amount: Some(3.0),
+            },
         ];
         for tx in txs {
             process_tx(tx, &mut accounts, &mut tx_states)?;
@@ -342,9 +348,9 @@ mod test {
             *account,
             ClientAccount {
                 client: 1,
-                available: 3.0,
+                available: 0.0,
                 held: 0.0,
-                total: 3.0,
+                total: 0.0,
                 locked: false,
             }
         );
@@ -366,7 +372,7 @@ mod test {
                 type_: TxType::Withdrawal,
                 client_id: 1,
                 tx_id: 2,
-                amount: Some(7.0),
+                amount: Some(10.0),
             },
         ];
         for tx in txs {
