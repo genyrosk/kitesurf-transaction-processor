@@ -12,7 +12,7 @@ pub struct Tx {
     pub client_id: u16,
     #[serde(rename = "tx")]
     pub tx_id: u32,
-    pub amount: Option<f32>,
+    pub amount: Option<f64>,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
@@ -27,7 +27,7 @@ pub enum TxType {
 
 #[derive(Debug, PartialEq)]
 pub struct TxState {
-    pub amount: f32,
+    pub amount: f64,
     pub type_: TxStateType,
     pub client_id: u16,
     pub disputed: bool,
@@ -41,7 +41,7 @@ pub enum TxStateType {
 }
 
 impl TxState {
-    fn new(amount: f32, type_: TxStateType, client_id: u16) -> Self {
+    fn new(amount: f64, type_: TxStateType, client_id: u16) -> Self {
         Self {
             amount,
             type_,
@@ -52,23 +52,23 @@ impl TxState {
     }
 }
 
-fn round_serialize<S>(x: &f32, s: S) -> Result<S::Ok, S::Error>
+fn round_serialize<S>(x: &f64, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
     let x = (x * 10000.0).round() / 10000.0;
-    s.serialize_f32(x)
+    s.serialize_f64(x)
 }
 
 #[derive(Debug, Serialize, PartialEq)]
 pub struct ClientAccount {
     pub client: u16,
     #[serde(serialize_with = "round_serialize")]
-    pub available: f32,
+    pub available: f64,
     #[serde(serialize_with = "round_serialize")]
-    pub held: f32,
+    pub held: f64,
     #[serde(serialize_with = "round_serialize")]
-    pub total: f32,
+    pub total: f64,
     pub locked: bool,
 }
 

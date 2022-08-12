@@ -9,3 +9,14 @@ chargeback, 1,      1,
 deposit,    2,      2,  2.123498
 withdrawal, 2,      5,  3.1234789
 dispute,    2,      2,
+deposit,    3,      10,  100.0
+deposit,    4,      11,  100.0
+deposit,    5,      12,  100.0
+deposit,    6,      13,  100.0
+deposit,    7,      15,  100.0
+deposit,    8,      16,  100.0
+deposit,    9,      17,  100.0
+deposit,    10,      18,  100.0
+deposit,    11,      19,  100.0
+deposit,    125,      20,  100.0
+deposit,    65535,      21,  100.0
